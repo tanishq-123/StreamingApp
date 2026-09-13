@@ -1,0 +1,12 @@
+aws ecr get-login-password --region us-east-1 | \
+     docker login --username AWS --password-stdin 277385995709.dkr.ecr.us-east-1.amazonaws.com
+
+docker build --platform linux/amd64 -t 277385995709.dkr.ecr.us-east-1.amazonaws.com/streamingapp/frontend:1.0.0 ./frontend
+docker build --platform linux/amd64 -t 277385995709.dkr.ecr.us-east-1.amazonaws.com/streamingapp/auth:1.0.0 ./backend/authService
+docker build --platform linux/amd64 -f backend/streamingService/Dockerfile -t 277385995709.dkr.ecr.us-east-1.amazonaws.com/streamingapp/streaming:1.0.0 ./backend
+docker build --platform linux/amd64 -f backend/adminService/Dockerfile -t 277385995709.dkr.ecr.us-east-1.amazonaws.com/streamingapp/admin:1.0.0 ./backend
+docker build --platform linux/amd64 -f backend/chatService/Dockerfile -t 277385995709.dkr.ecr.us-east-1.amazonaws.com/streamingapp/chat:1.0.0 ./backend
+
+for repo in frontend auth streaming admin chat; do
+  docker push 277385995709.dkr.ecr.us-east-1.amazonaws.com/streamingapp/$repo:1.0.0
+done

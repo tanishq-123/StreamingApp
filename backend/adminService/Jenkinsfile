@@ -1,0 +1,68 @@
+pipeline {
+  agent any
+
+  environment {
+    AWS_ACCOUNT_ID = '277385995709'
+    AWS_REGION     = 'us-east-1'
+    ECR_REGISTRY   = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+    ECR_REPO       = 'streamingapp/admin'
+    LAST_STAGE     = 'Initialization'
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        script { env.LAST_STAGE = 'Checkout' }
+        checkout scm
+        script { env.IMAGE_TAG = env.GIT_COMMIT.take(7) }
+      }
+    }
+
+    stage('Install & Test') {
+      steps {
+        script { env.LAST_STAGE = 'Install & Test' }
+        dir('backend/adminService') {
+          sh 'docker run --rm -v $PWD:/app -w /app node:18-alpine npm ci'
+        }
+      }
+    }
+
+    stage('Build Image') {
+      steps {
+        script { env.LAST_STAGE = 'Build Image' }
+        sh """
+          docker build --platform linux/amd64 \
+            -f backend/adminService/Dockerfile \
+            -t ${ECR_REGISTRY}/${ECR_REPO}:${IMAGE_TAG} \
+            -t ${ECR_REGISTRY}/${ECR_REPO}:latest \
+            backend
+        """
+      }
+    }
+
+    stage('Push to ECR') {
+      steps {
+        script { env.LAST_STAGE = 'Push to ECR' }
+        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'streamingapp-tanishq-aws-creds']]) {
+          sh """
+            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+            docker push ${ECR_REGISTRY}/${ECR_REPO}:${IMAGE_TAG}
+            docker push ${ECR_REGISTRY}/${ECR_REPO}:latest
+          """
+        }
+      }
+    }
+  }
+
+  post {
+    success {
+      echo "SUCCESS: streamingapp/admin image ${env.IMAGE_TAG} pushed. Commit: ${env.GIT_COMMIT}"
+    }
+    failure {
+      echo "FAILED at stage [${env.LAST_STAGE}] — commit ${env.GIT_COMMIT}"
+    }
+    always {
+      sh "docker logout ${ECR_REGISTRY} || true"
+    }
+  }
+}
