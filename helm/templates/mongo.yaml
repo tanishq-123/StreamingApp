@@ -41,3 +41,4 @@ spec:
         resources:
           requests:
             storage: {{ .Values.mongo.storageSize }}
+        storageClassName: gp2
