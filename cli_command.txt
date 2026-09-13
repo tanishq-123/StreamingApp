@@ -18,3 +18,6 @@ helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
 helm install ingress-nginx ingress-nginx/ingress-nginx --namespace ingress-nginx --create-namespace
 
 helm install streamingapp ./helm -f helm/values.yaml -f helm/values-secret.yaml
+
+aws eks create-addon --cluster-name streamingapp-cluster \
+  --addon-name amazon-cloudwatch-observability --region us-east-1

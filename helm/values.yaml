@@ -70,7 +70,7 @@ ingress:
 hpa:
   enabled: true
   minReplicas: 2
-  maxReplicas: 6
+  maxReplicas: 4
   targetCPUUtilizationPercentage: 70
 
 # Never commit real values here — override at install time with:
