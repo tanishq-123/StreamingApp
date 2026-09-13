@@ -6,11 +6,11 @@ pipeline {
     AWS_REGION     = 'us-east-1'
     ECR_REGISTRY   = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
     ECR_REPO       = 'streamingapp/frontend'
-    LAST_STAGE     = 'Initialization'
 
-    // Fill these in once the Ingress host is live (Step 4/5) — CRA bakes them
-    // into the static bundle at BUILD time, so they can't be changed at runtime.
-    INGRESS_HOST = 'http://<your-ingress-host>'
+    // Fill this in once the Ingress host is live (Step 4/5) — CRA bakes it
+    // into the static bundle at BUILD time, so it can't be changed at runtime.
+    // No angle brackets — they're shell redirection operators inside sh steps.
+    INGRESS_HOST = 'http://PENDING_INGRESS_HOST'
   }
 
   stages {
@@ -68,7 +68,7 @@ pipeline {
       echo "SUCCESS: streamingapp/frontend image ${env.IMAGE_TAG} pushed. Commit: ${env.GIT_COMMIT}"
     }
     failure {
-      echo "FAILED at stage [${env.LAST_STAGE}] — commit ${env.GIT_COMMIT}"
+      echo "FAILED at stage [${env.LAST_STAGE ?: 'Checkout'}] — commit ${env.GIT_COMMIT}"
     }
     always {
       sh "docker logout ${ECR_REGISTRY} || true"
