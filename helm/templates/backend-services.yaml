@@ -1,0 +1,115 @@
+{{- range $name, $svc := .Values.services }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    app: {{ $name }}
+spec:
+  replicas: {{ $svc.replicas }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: {{ $name }}
+  template:
+    metadata:
+      labels:
+        app: {{ $name }}
+    spec:
+      containers:
+        - name: {{ $name }}
+          image: "{{ $.Values.ecrRegistry }}/{{ $svc.repo }}:{{ $svc.tag }}"
+          ports:
+            - containerPort: {{ $svc.port }}
+          resources:
+            {{- toYaml $.Values.resources | nindent 12 }}
+          env:
+            - name: PORT
+              value: "{{ $svc.port }}"
+            - name: MONGO_URI
+              value: "mongodb://mongo:27017/{{ $.Values.global.mongoDb }}"
+            - name: CLIENT_URLS
+              value: "{{ $.Values.global.clientUrls }}"
+            - name: AWS_REGION
+              value: "{{ $.Values.awsRegion }}"
+            {{- if or (eq $name "streaming") (eq $name "admin") }}
+            - name: AWS_S3_BUCKET
+              value: "{{ $.Values.global.awsS3Bucket }}"
+            - name: AWS_CDN_URL
+              value: "{{ $.Values.global.awsCdnUrl }}"
+            {{- end }}
+            {{- if eq $name "streaming" }}
+            - name: STREAMING_PUBLIC_URL
+              value: "{{ $.Values.global.streamingPublicUrl }}"
+            {{- end }}
+            {{- if eq $name "auth" }}
+            - name: AWS_S3_BUCKET
+              value: "{{ $.Values.global.awsS3Bucket }}"
+            {{- end }}
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: streamingapp-secrets
+                  key: jwtSecret
+            {{- if $svc.usesAwsCreds }}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: streamingapp-secrets
+                  key: awsAccessKeyId
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: streamingapp-secrets
+                  key: awsSecretAccessKey
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: {{ $svc.healthPath }}
+              port: {{ $svc.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: {{ $svc.healthPath }}
+              port: {{ $svc.port }}
+            initialDelaySeconds: 20
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}-svc
+spec:
+  selector:
+    app: {{ $name }}
+  ports:
+    - port: {{ $svc.port }}
+      targetPort: {{ $svc.port }}
+---
+{{- if $.Values.hpa.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $name }}-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ $name }}
+  minReplicas: {{ $.Values.hpa.minReplicas }}
+  maxReplicas: {{ $.Values.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ $.Values.hpa.targetCPUUtilizationPercentage }}
+---
+{{- end }}
+{{- end }}

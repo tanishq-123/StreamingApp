@@ -1,0 +1,81 @@
+awsRegion: "us-east-1"
+ecrRegistry: "277385995709.dkr.ecr.us-east-1.amazonaws.com"
+
+# Non-secret, shared across backend services. Fill in clientUrls/streamingPublicUrl with
+# the real Ingress host once Step 5's Ingress is live (matches the frontend Jenkinsfile's
+# INGRESS_HOST placeholder — keep them in sync).
+global:
+  mongoDb: streamingapp
+  clientUrls: "http://a3dfafb4dfc184988acad0aacc6cfe54-1407284491.us-east-1.elb.amazonaws.com"
+  streamingPublicUrl: "http://a3dfafb4dfc184988acad0aacc6cfe54-1407284491.us-east-1.elb.amazonaws.com/api/streaming"
+  awsS3Bucket: ""
+  awsCdnUrl: ""
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+# One entry per backend service. authService uses AWS keys but not AWS_CDN_URL/STREAMING_PUBLIC_URL;
+# streamingService and adminService use AWS_CDN_URL; streamingService alone uses STREAMING_PUBLIC_URL;
+# chatService uses neither Mongo-adjacent AWS var nor AWS credentials at all — see docker-compose.yml.
+services:
+  auth:
+    repo: streamingapp/auth
+    tag: latest
+    replicas: 2
+    port: 3001
+    healthPath: /health
+    usesAwsCreds: true
+  streaming:
+    repo: streamingapp/streaming
+    tag: latest
+    replicas: 2
+    port: 3002
+    healthPath: /api/health
+    usesAwsCreds: true
+  admin:
+    repo: streamingapp/admin
+    tag: latest
+    replicas: 2
+    port: 3003
+    healthPath: /api/health
+    usesAwsCreds: true
+  chat:
+    repo: streamingapp/chat
+    tag: latest
+    replicas: 2
+    port: 3004
+    healthPath: /api/health
+    usesAwsCreds: false
+
+frontend:
+  repo: streamingapp/frontend
+  tag: latest
+  replicas: 2
+
+mongo:
+  image: mongo:6
+  port: 27017
+  storageSize: 5Gi
+
+# Empty host = Ingress accepts any hostname (fine for an ELB DNS name with no custom domain).
+# Set once you have a real domain, or leave empty and just hit the ELB hostname directly.
+ingress:
+  host: ""
+
+hpa:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+
+# Never commit real values here — override at install time with:
+#   helm install streamingapp ./helm/streamingapp -f values.yaml -f values-secret.yaml
+secrets:
+  jwtSecret: "changeme"
+  awsAccessKeyId: ""
+  awsSecretAccessKey: ""

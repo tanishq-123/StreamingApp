@@ -10,3 +10,11 @@ docker build --platform linux/amd64 -f backend/chatService/Dockerfile -t 2773859
 for repo in frontend auth streaming admin chat; do
   docker push 277385995709.dkr.ecr.us-east-1.amazonaws.com/streamingapp/$repo:1.0.0
 done
+
+eksctl create cluster --name streamingapp-cluster --region us-east-1 --nodegroup-name streamingapp-nodes --node-type t3.medium --nodes 2 --nodes-min 2 --nodes-max 4 --managed
+
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+
+helm install ingress-nginx ingress-nginx/ingress-nginx --namespace ingress-nginx --create-namespace
+
+helm install streamingapp ./helm -f helm/values.yaml -f helm/values-secret.yaml

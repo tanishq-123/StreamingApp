@@ -10,7 +10,7 @@ pipeline {
     // Fill this in once the Ingress host is live (Step 4/5) — CRA bakes it
     // into the static bundle at BUILD time, so it can't be changed at runtime.
     // No angle brackets — they're shell redirection operators inside sh steps.
-    INGRESS_HOST = 'http://PENDING_INGRESS_HOST'
+    INGRESS_HOST = 'http://a3dfafb4dfc184988acad0aacc6cfe54-1407284491.us-east-1.elb.amazonaws.com'
   }
 
   stages {
