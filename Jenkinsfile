@@ -34,8 +34,8 @@ pipeline {
           file(credentialsId: 'streamingapp-tanishq-values-secret', variable: 'SECRET_VALUES_FILE')
         ]) {
           sh """
-            helm upgrade --install streamingapp ./helm/streamingapp \
-              -f helm/streamingapp/values.yaml \
+            helm upgrade --install streamingapp ./helm \
+              -f helm/values.yaml \
               -f \$SECRET_VALUES_FILE \
               --wait --timeout 5m
           """
